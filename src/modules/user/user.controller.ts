@@ -1,61 +1,99 @@
 import {
-  Controller,
-  Post,
   Body,
-  HttpException,
-  HttpStatus,
+  Controller,
+  Delete,
+  Get,
+  Param,
+  Put,
+  Res,
+  UseGuards,
 } from '@nestjs/common';
 import { UsersService } from './user.service';
-import { User, PublicUser } from 'src/interfaces/user.interface';
-import { LoginDto } from './dto/Login.dto';
-import { SignupDto } from './dto/Signup.dto';
-import * as bcrypt from 'bcryptjs';
+import {
+  ApiResponse,
+  PublicUser,
+} from 'src/modules/user/interfaces/user.interface';
+import { JwtAuthGuard } from '../auth/auth.guard';
+import { RolesGuard } from 'src/common/guards/roles.guard';
+import { Roles } from 'src/common/decorators/roles.decorator';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { PrismaServices } from 'prisma/prisma.service';
 
 @Controller('users')
 export class UsersController {
-  constructor(private usersService: UsersService) {}
+  constructor(
+    private usersService: UsersService,
+    private prisma: PrismaServices,
+  ) {}
 
-  @Post('login')
-  async login(@Body() loginData: LoginDto): Promise<PublicUser> {
-    const user = await this.usersService.CheckUserByNameOrEmail(
-      loginData.identifier,
-    );
+  @Get()
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('user')
+  async getUsers(): Promise<PublicUser[] | null> {
+    return await this.usersService.findAll();
+  }
 
-    if (!user) {
-      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+  @Put(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('user')
+  async updateUsers(
+    @Res({ passthrough: true }) res: Response,
+    @Body() dto: UpdateUserDto,
+    @Param('id') userId: string,
+  ): Promise<ApiResponse<PublicUser>> {
+    const id = parseInt(userId);
+
+    const user = await this.usersService.findOne(id);
+    if (!user || !user.data) {
+      return {
+        success: false,
+        message: 'User not found',
+      };
     }
 
-    const isPasswordValid = await bcrypt.compare(
-      loginData.password,
-      user.password,
-    );
+    const updatedUser = await this.prisma.user.update({
+      where: { id },
+      data: {
+        name: dto.name || user.data.name,
+        email: dto.email || user.data.email,
+      },
+    });
 
-    if (!isPasswordValid) {
-      throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
-    }
+    const { password, ...publicUser } = updatedUser;
 
-    // Manually return only public fields
     return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
+      success: true,
+      message: 'User updated successfully',
+      data: publicUser,
     };
   }
 
-  @Post('signup')
-  async signup(@Body() signupData: SignupDto): Promise<PublicUser> {
-    const existingUser = await this.usersService.findByEmail(signupData.email);
-    if (existingUser) {
-      throw new HttpException('User already exists', HttpStatus.BAD_REQUEST);
+  @Delete(':id')
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('user')
+  async deleteUser(
+    @Param('id') userId: string,
+  ): Promise<ApiResponse<PublicUser>> {
+    const id = parseInt(userId);
+    const user = await this.usersService.findOne(id);
+
+    if (!user || !user.data) {
+      return {
+        success: false,
+        message: 'User not found',
+      };
     }
 
-    const user = await this.usersService.create(signupData);
+    const deletedUser = await this.prisma.user.delete({
+      where: { id },
+    });
 
-    // Manually return only public fields
+    const { password, ...publicUser } = deletedUser;
+
     return {
-      id: user.id,
-      name: user.name,
-      email: user.email,
+      success: true,
+      message: 'User deleted successfully',
+      data: publicUser,
     };
   }
 }

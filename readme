@@ -88,3 +88,29 @@ model User {
 #
 npx prisma generate
 npx prisma migrate dev --name init
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+## auth
+npm install @nestjs/jwt @nestjs/passport passport passport-jwt bcryptjs
+npm install --save-dev @types/bcryptjs @types/passport-jwt
+
+
+# use of the jwt authentication
+  @UseGuards(JwtAuthGuard)
