@@ -1,0 +1,90 @@
+## nest js had three structure :
+
+1> controller
+2> provider
+3> modules
+
+1. npm i -g @nestjs/cli
+2. nest new your-project-name
+3. cd your-project-name
+4. npm install prisma --save-dev
+5. npm install @prisma/client
+6. npx prisma init
+
+prisma/
+└── schema.prisma # DB schema definition
+.env # Environment variables
+
+src/
+├── app.module.ts
+├── main.ts
+│
+├── config/ # Centralized configs (env, db)
+│ └── prisma.config.ts
+│
+├── common/ # Reusable logic (pipes, guards, filters, utils)
+│ ├── guards/
+│ ├── interceptors/
+│ ├── filters/
+│ └── constants/
+│
+├── core/ # Core modules (e.g., PrismaService, Logger)
+│ └── prisma/
+│ ├── prisma.service.ts
+│ └── prisma.module.ts
+│
+├── modules/ # Feature-based domain modules
+│ ├── auth/
+│ │ ├── auth.controller.ts
+│ │ ├── auth.service.ts
+│ │ ├── auth.module.ts
+│ │ ├── dto/
+│ │ └── strategies/
+│ │
+│ ├── users/
+│ │ ├── users.controller.ts
+│ │ ├── users.service.ts
+│ │ ├── users.module.ts
+│ │ ├── dto/
+│ │ └── entities/ # Define user types or custom interfaces
+│
+├── interfaces/ # Global TypeScript interfaces
+│
+└── utils/ # General utilities/helpers (e.g., hashing, date utils)
+
+# DATABASE_URL="mysql://root:password@localhost:3306/your_db_name"
+
+# datasource db {
+
+provider = "mysql"
+url = env("DATABASE_URL")
+}
+
+generator client {
+provider = "prisma-client-js"
+}
+
+# Update prisma/schema.prisma:
+
+datasource db {
+provider = "mysql"
+url = env("DATABASE_URL")
+}
+
+generator client {
+provider = "prisma-client-js"
+}
+
+
+#
+model User {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  name      String
+  password  String
+  createdAt DateTime @default(now())
+}
+
+#
+npx prisma generate
+npx prisma migrate dev --name init
